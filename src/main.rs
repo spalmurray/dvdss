@@ -91,8 +91,10 @@ fn main() {
 fn write_initial_screen(w: usize, h: usize) {
     let mut screen_string: String = "".to_owned();
 
-    for _ in 0..(h+1)*(w+1) {
-        screen_string.push_str(&"\x1b[48;2;0;0;0m ");
+    for _ in 0..h {
+        for _ in 0..w {
+            screen_string.push_str(&"\x1b[48;2;0;0;0m ");
+        }
     }
     
     print!("{}{}c{}", "\x1b[?25l", 27 as char, screen_string);
