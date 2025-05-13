@@ -10,6 +10,7 @@ const GRAPHIC: [[bool; GRAPHIC_HEIGHT]; GRAPHIC_WIDTH] = [[false, true, false, t
 fn main() {
     ctrlc::set_handler(move || {
         let mut lock = stdout().lock();
+        // This sequence reenables the cursor (we disable it below)
         write!(lock, "\x1b[?25h\n").unwrap();
         stdout().flush().unwrap();
         exit(0)
@@ -22,50 +23,60 @@ fn main() {
     let mut y: usize = 0;
     let mut vx: i32 = 1;
     let mut vy: i32 = 1;
+
     loop {
         let (Width(w), Height(h)) = terminal_size().unwrap(); 
         let new_width = usize::from(w);
         let new_height = usize::from(h);
-
         if new_width != width || new_height != height {
+            // Reset position and velocity on resize. Avoids panics caused by 
+            // indexing out of bounds.
             x = 0;
             y = 0;
             vx = 1;
             vy = 1;
         }
-
         width = new_width;
         height = new_height;
 
+
         if width <= GRAPHIC_WIDTH || height <= GRAPHIC_HEIGHT {
             let mut lock = stdout().lock();
+            // Same escape here to reenable the cursor.
             write!(lock, "{}c\x1b[?25hTerminal is too small. Must be at least {} characters wide and {} characters tall.\n", 27 as char, GRAPHIC_WIDTH, GRAPHIC_HEIGHT).unwrap();
             stdout().flush().unwrap();
             exit(1);
         }
 
         let mut out = stdout();
+        // {27 as char}c clears the terminal.
+        // \x1b[?25l disables the terminal cursor.
+        // Then we dump our get_screen output.
         write!(out, "{}c\x1b[?25l{}", 27 as char, get_screen(width, height, x, y)).unwrap();
         stdout().flush().unwrap();
 
+        // Handle x boundary collisions
         if x + GRAPHIC_WIDTH + 1 > width {
             vx = -1;
         } else if x == 0 {
             vx = 1;
         }
 
+        // Increment x
         if vx.is_negative() {
             x -= usize::try_from(vx.abs()).unwrap();
         } else {
             x += usize::try_from(vx.abs()).unwrap();
         }
 
+        // Handle y boundary collisions
         if y + GRAPHIC_HEIGHT + 1 > height {
             vy = -1;
         } else if y == 0 {
             vy = 1;
         }
 
+        // Increment y
         if vy.is_negative() {
             y -= usize::try_from(vy.abs()).unwrap();
         } else {
@@ -79,16 +90,15 @@ fn main() {
 fn get_screen(w: usize, h: usize, x: usize, y: usize) -> String {
     let mut screen: Vec<Vec<bool>> = vec![vec![false; h]; w];
 
-    // insert graphic at coordinates
+    // Insert graphic at coordinates
     for j in 0..GRAPHIC_HEIGHT {
         for i in 0..GRAPHIC_WIDTH {
             screen[i + x][j + y] = GRAPHIC[i][j];
         }
     }
 
-    // build string to render
+    // Build string to render
     let mut screen_string: String = "".to_owned();
-    
     for j in 0..h {
         let j = h - j - 1;
         for i in 0..w {
