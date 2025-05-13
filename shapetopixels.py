@@ -27,6 +27,6 @@ if __name__ == "__main__":
         for j in range(height):
             line = lines[j]
             for i in range(width):
-                pixels[i][height - j - 1] = Pixel(line[i] == "#")
+                pixels[i][j] = Pixel(line[i] == "#")
 
         print(pixels)
