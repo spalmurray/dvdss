@@ -1,4 +1,4 @@
-use std::{io::{stdout, Write}, process::exit, thread::sleep, time::{self, Duration}};
+use std::{io::{stdout, Write}, process::Command, process::exit, thread::sleep, time::{self, Duration}};
 use terminal_size::{Width, Height, terminal_size};
 
 const FRAME_DURATION: Duration = time::Duration::new(0, 100000000);
@@ -11,8 +11,10 @@ fn main() {
     ctrlc::set_handler(move || {
         let mut lock = stdout().lock();
         // This sequence reenables the cursor (we disable it below)
-        write!(lock, "\x1b[?25h\n").unwrap();
+        write!(lock, "{}c\x1b[?25h\n", 27 as char).unwrap();
         stdout().flush().unwrap();
+        // This command resets terminal colors
+        Command::new("tput").arg("sgr0").status().unwrap();
         exit(0)
     })
     .expect("Error setting Ctrl-C handler");
@@ -42,6 +44,7 @@ fn main() {
 
         if width <= GRAPHIC_WIDTH || height <= GRAPHIC_HEIGHT {
             let mut lock = stdout().lock();
+            Command::new("tput").arg("sgr0").status().unwrap();
             // Same escape here to reenable the cursor.
             write!(lock, "{}c\x1b[?25hTerminal is too small. Must be at least {} characters wide and {} characters tall.\n", 27 as char, GRAPHIC_WIDTH, GRAPHIC_HEIGHT).unwrap();
             stdout().flush().unwrap();
@@ -102,7 +105,8 @@ fn get_screen(w: usize, h: usize, x: usize, y: usize) -> String {
     for j in 0..h {
         let j = h - j - 1;
         for i in 0..w {
-            let pixel: &str = if screen[i][j] { "\x1b[1;47m " } else { "\x1b[0;40m " };
+            // Need rgb color support in your emulator
+            let pixel: &str = if screen[i][j] { "\x1b[48;2;255;255;255m " } else { "\x1b[48;2;0;0;0m " };
             screen_string.push_str(&pixel);
         }
     }
